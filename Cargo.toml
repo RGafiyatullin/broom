@@ -1,0 +1,13 @@
+[package]
+name = "broom"
+version = "0.1.0"
+authors = ["Roman Gafiyatullin <r.gafiyatullin@me.com>"]
+
+[dependencies]
+log = "0.3"
+env_logger = "0.3"
+libc = "0.2.34"
+futures = "0.1"
+tokio-core = "0.1.11"
+tokio-signal = "0.1.2"
+tokio-process = "0.1.4"
