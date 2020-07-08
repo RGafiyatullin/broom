@@ -1,12 +1,11 @@
-
-use std::io;
-use std::sync::Arc;
+use std::process::ExitStatus;
 
 #[derive(Debug, Clone)]
 pub enum Event {
     ChildBorn(u32),
-    // ChildDied(u32, i32),
-    Signal(i32),
-    TerminationTimeout,
-    IOError(Arc<io::Error>),
+    ChildExit(ExitStatus),
+    ChildTerm,
+
+    ChildSignal,
+    ShutdownRequest,
 }
