@@ -1,11 +1,10 @@
-use std::process::ExitStatus;
+use tokio::signal::unix::SignalKind;
+use libc::c_int;
 
-#[derive(Debug, Clone)]
+use crate::child_process::ProcessEvent;
+
+#[derive(Debug)]
 pub enum Event {
-    ChildBorn(u32),
-    ChildExit(ExitStatus),
-    ChildTerm,
-
-    ChildSignal,
-    ShutdownRequest,
+    ProcessEvent(ProcessEvent),
+    Signal(c_int),
 }

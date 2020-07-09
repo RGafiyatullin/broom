@@ -1,18 +1,11 @@
-mod event;
-use event::Event;
-
-mod handler;
-use handler::Handler;
-
 use std::collections::HashMap;
 use std::env;
 use std::time::Duration;
 
+use broom::*;
+
 use futures::prelude::*;
 use tokio::process::Command as OsCommand;
-use tokio::signal::unix::signal as unix_signal;
-use tokio::signal::unix::SignalKind as UnixSignalKind;
-
 fn args() -> Result<(String, Vec<String>), ::failure::Error> {
     let args: Vec<String> = env::args().collect();
     let args_len = args.len();
@@ -42,73 +35,73 @@ fn opts_termination_timeout_duration() -> Duration {
 }
 
 async fn run() -> Result<(), ::failure::Error> {
-    let signals = {
-        let sigterm_stream =
-            unix_signal(UnixSignalKind::terminate())?.map(|_| Event::ShutdownRequest);
-        let sigint_stream =
-            unix_signal(UnixSignalKind::interrupt())?.map(|_| Event::ShutdownRequest);
-        let sigchld_stream = unix_signal(UnixSignalKind::child())?.map(|_| Event::ChildSignal);
+    let signals = signals_stream::create()?.map(Event::Signal);
 
-        let stream = stream::select(sigterm_stream, sigint_stream);
-        let stream = stream::select(stream, sigchld_stream);
-
-        stream
-    };
-
-    let main_child = {
-        use std::process::Stdio;
-
+    let child_events = {
         let (cmd_exec, cmd_args) = args()?;
         let env_vars = env();
-
-        let mut cmd = OsCommand::new(&cmd_exec);
-        cmd.args(cmd_args)
-            .env_clear()
-            .envs(env_vars)
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .stdin(Stdio::piped());
-
-        let mut spawned = cmd.spawn()?;
-
-        let mut own_stdout = tokio::io::stdout();
-        let mut child_stdout = spawned
-            .stdout
-            .take()
-            .ok_or_else(|| ::failure::format_err!("Failed to take child stdout"))?;
-        let stdout_redirected =
-            async move { tokio::io::copy(&mut child_stdout, &mut own_stdout).await };
-        let _ = tokio::spawn(stdout_redirected);
-
-        let mut own_stderr = tokio::io::stderr();
-        let mut child_stderr = spawned
-            .stderr
-            .take()
-            .ok_or_else(|| ::failure::format_err!("Failed to take child stderr"))?;
-        let stderr_redirected =
-            async move { tokio::io::copy(&mut child_stderr, &mut own_stderr).await };
-        let _ = tokio::spawn(stderr_redirected);
-
-        let mut own_stdin = tokio::io::stdin();
-        let mut child_stdin = spawned
-            .stdin
-            .take()
-            .ok_or_else(|| ::failure::format_err!("Failed to take child stdin"))?;
-        let stdin_redirected =
-            async move { tokio::io::copy(&mut own_stdin, &mut child_stdin).await };
-        let _ = tokio::spawn(stdin_redirected);
-
-        log::info!("{:#?}", spawned);
-
-        spawned
+        let process_args = child_process::ProcessArgs::new(cmd_exec)
+            .with_args(cmd_args)
+            .with_env(env_vars);
+        process_args.start()?.map(Event::ProcessEvent)
     };
 
-    let child_born = stream::once(future::ready(Event::ChildBorn(main_child.id())));
+    // let main_child = {
+    //     use std::process::Stdio;
 
-    let events = child_born.chain(signals);
+    //     let (cmd_exec, cmd_args) = args()?;
+    //     let env_vars = env();
 
-    let _ = events.fold(Handler::new(), Handler::handle).await;
+    //     let mut cmd = OsCommand::new(&cmd_exec);
+    //     cmd.args(cmd_args)
+    //         .env_clear()
+    //         .envs(env_vars)
+    //         .stdout(Stdio::piped())
+    //         .stderr(Stdio::piped())
+    //         .stdin(Stdio::piped());
 
+    //     let mut spawned = cmd.spawn()?;
+
+    //     let mut own_stdout = tokio::io::stdout();
+    //     let mut child_stdout = spawned
+    //         .stdout
+    //         .take()
+    //         .ok_or_else(|| ::failure::format_err!("Failed to take child stdout"))?;
+    //     let stdout_redirected =
+    //         async move { tokio::io::copy(&mut child_stdout, &mut own_stdout).await };
+    //     let _ = tokio::spawn(stdout_redirected);
+
+    //     let mut own_stderr = tokio::io::stderr();
+    //     let mut child_stderr = spawned
+    //         .stderr
+    //         .take()
+    //         .ok_or_else(|| ::failure::format_err!("Failed to take child stderr"))?;
+    //     let stderr_redirected =
+    //         async move { tokio::io::copy(&mut child_stderr, &mut own_stderr).await };
+    //     let _ = tokio::spawn(stderr_redirected);
+
+    //     let mut own_stdin = tokio::io::stdin();
+    //     let mut child_stdin = spawned
+    //         .stdin
+    //         .take()
+    //         .ok_or_else(|| ::failure::format_err!("Failed to take child stdin"))?;
+    //     let stdin_redirected =
+    //         async move { tokio::io::copy(&mut own_stdin, &mut child_stdin).await };
+    //     let _ = tokio::spawn(stdin_redirected);
+
+    //     log::info!("{:#?}", spawned);
+
+    //     spawned
+    // };
+
+    let mut events = stream::select(child_events, signals);
+    let mut handler = Handler::new();
+    while let Some(event) = events.next().await {
+        if handler.handle(event).await? {
+        } else {
+            break;
+        }
+    }
     Ok(())
 }
 

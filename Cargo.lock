@@ -69,6 +69,7 @@ dependencies = [
  "env_logger",
  "failure",
  "futures",
+ "libc",
  "log",
  "tokio",
 ]
