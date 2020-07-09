@@ -1,4 +1,3 @@
-
 use libc::c_int;
 
 use futures::prelude::*;
@@ -6,7 +5,7 @@ use tokio::signal::unix::SignalKind;
 
 pub fn create() -> Result<impl Stream<Item = c_int> + Unpin, std::io::Error> {
     let out = stream::empty();
-    
+
     let out = stream::select(out, single_signal_stream(libc::SIGALRM)?);
     let out = stream::select(out, single_signal_stream(libc::SIGCHLD)?);
     let out = stream::select(out, single_signal_stream(libc::SIGHUP)?);
@@ -22,8 +21,6 @@ pub fn create() -> Result<impl Stream<Item = c_int> + Unpin, std::io::Error> {
     Ok(out)
 }
 
-fn single_signal_stream(
-    sig: c_int,
-) -> Result<impl Stream<Item = c_int> + Unpin, std::io::Error> {
+fn single_signal_stream(sig: c_int) -> Result<impl Stream<Item = c_int> + Unpin, std::io::Error> {
     Ok(tokio::signal::unix::signal(SignalKind::from_raw(sig))?.map(move |_| sig))
 }

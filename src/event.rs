@@ -1,4 +1,3 @@
-use tokio::signal::unix::SignalKind;
 use libc::c_int;
 
 use crate::child_process::ProcessEvent;

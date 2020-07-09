@@ -110,7 +110,10 @@ async fn main() {
     let _ = dotenv::dotenv().ok();
     let () = env_logger::init();
 
-    run().await.expect("Failure");
+    let () = run().await.expect("Failure");
+
+    let () = ::tokio::time::delay_for(std::time::Duration::from_millis(500)).await;
+    log::trace!("Bye!");
 
     // env_logger::init().unwrap();
 

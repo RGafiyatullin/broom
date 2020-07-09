@@ -17,10 +17,6 @@ pub enum ProcessEvent {
         stdout: ChildStdout,
         stderr: ChildStderr,
     },
-    Terminated {
-        pid: u32,
-        result: Result<ExitStatus, io::Error>,
-    },
 }
 
 #[derive(Debug, Clone)]
@@ -87,9 +83,7 @@ impl ProcessArgs {
         };
 
         let start_event = stream::once(future::ready(start_event));
-        let term_event =
-            stream::once(child.map(move |result| ProcessEvent::Terminated { pid, result }));
 
-        Ok(start_event.chain(term_event))
+        Ok(start_event)
     }
 }

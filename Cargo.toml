@@ -5,10 +5,11 @@ authors = ["Roman Gafiyatullin <r.gafiyatullin@me.com>"]
 edition = "2018"
 
 [dependencies]
-failure = "^0.1"
 dotenv = "^0.15"
-log = "^0.4"
 env_logger = "^0.7"
+
+failure = "^0.1"
+log = "^0.4"
 futures = "^0.3"
-tokio = { version = "^0.2", features = ["rt-core", "macros", "signal", "process", "io-std", "io-util", "stream"] }
+tokio = { version = "^0.2", features = ["rt-core", "macros", "signal", "process", "io-std", "io-util", "stream", "time"] }
 libc = "^0.2"
